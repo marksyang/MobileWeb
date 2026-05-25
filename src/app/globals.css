@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0a0a0f;
+  --color-bg-secondary: #12121a;
+  --color-bg-card: rgba(255, 255, 255, 0.04);
+  --color-bg-card-hover: rgba(255, 255, 255, 0.08);
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-glow: rgba(56, 189, 248, 0.3);
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: rgba(240, 240, 245, 0.6);
+  --color-text-tertiary: rgba(240, 240, 245, 0.35);
+  --color-accent-sky: #38bdf8;
+  --color-accent-violet: #818cf8;
+  --color-accent-rose: #fb7185;
+  --color-accent-amber: #fbbf24;
+  --color-accent-emerald: #34d399;
+  --font-display: "Syne", "Noto Sans TC", sans-serif;
+  --font-body: "Outfit", "Noto Sans TC", sans-serif;
+  --animate-fade-in: fadeIn 0.6s ease-out both;
+  --animate-slide-up: slideUp 0.5s ease-out both;
+  --animate-glow: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.1);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+  }
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
