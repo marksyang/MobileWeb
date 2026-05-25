@@ -46,7 +46,7 @@ const BRAND_COLORS: Record<string, { bg: string; fg: string }> = {
 };
 
 const img = (brand: string, name: string) =>
-  `https://placehold.co/600x800/${BRAND_COLORS[brand]?.bg || "1a1a2e"}/${BRAND_COLORS[brand]?.fg || "e0e0e0"}?text=${encodeURIComponent(name)}`;
+  `https://placehold.co/600x800/${BRAND_COLORS[brand]?.bg || "1a1a2e"}/${BRAND_COLORS[brand]?.fg || "e0e0e0"}.png?text=${encodeURIComponent(name)}`;
 
 export const BRANDS = [
   { id: "apple", name: "Apple", logo: "🍎" },
