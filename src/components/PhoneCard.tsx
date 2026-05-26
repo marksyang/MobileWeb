@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Phone } from "@/data/phones";
+import type { Phone } from "@/lib/types";
 import Image from "next/image";
 
 export default function PhoneCard({ phone, rank }: { phone: Phone; rank?: number }) {

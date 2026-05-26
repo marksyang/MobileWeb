@@ -1,11 +1,11 @@
-import { getPhonesByBrand, getBrandById } from "@/data/phones";
+import { getPhonesByBrand, getBrandById } from "@/db/queries";
 import PhoneCard from "@/components/PhoneCard";
 import Link from "next/link";
 
 export default async function BrandPage({ params }: { params: Promise<{ brandId: string }> }) {
   const { brandId } = await params;
-  const brand = getBrandById(brandId);
-  const phones = getPhonesByBrand(brandId);
+  const brand = await getBrandById(brandId);
+  const phones = await getPhonesByBrand(brandId);
 
   if (!brand) {
     return (

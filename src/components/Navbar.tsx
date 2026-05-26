@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BRANDS } from "@/data/phones";
+import { getAllBrands } from "@/db/queries";
 
-export default function Navbar() {
+export default async function Navbar() {
+  const brands = await getAllBrands();
   return (
     <header className="sticky top-0 z-50 border-b border-border-subtle bg-bg-primary/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-4">
@@ -15,7 +16,7 @@ export default function Navbar() {
         </Link>
 
         <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
-          {BRANDS.map((brand) => (
+          {brands.map((brand) => (
             <Link
               key={brand.id}
               href={`/brand/${brand.id}`}

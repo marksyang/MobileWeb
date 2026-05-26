@@ -1,4 +1,4 @@
-import { getPhoneById } from "@/data/phones";
+import { getPhoneById } from "@/db/queries";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -11,7 +11,7 @@ const platformColors: Record<string, string> = {
 
 export default async function PhoneDetailPage({ params }: { params: Promise<{ phoneId: string }> }) {
   const { phoneId } = await params;
-  const phone = getPhoneById(phoneId);
+  const phone = await getPhoneById(phoneId);
 
   if (!phone) {
     return (

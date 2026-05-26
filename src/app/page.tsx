@@ -1,8 +1,8 @@
-import { getTopPhones } from "@/data/phones";
+import { getTopPhones } from "@/db/queries";
 import PhoneCard from "@/components/PhoneCard";
 
-export default function Home() {
-  const topPhones = getTopPhones();
+export default async function Home() {
+  const topPhones = await getTopPhones();
 
   return (
     <div className="relative">
