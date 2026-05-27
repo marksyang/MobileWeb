@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionCookieName, getSessionFromToken } from "@/lib/auth-config";
+import { sessionCookieName } from "@/lib/auth-config";
 
 export async function middleware(req: NextRequest) {
   const sessionToken = req.cookies.get(sessionCookieName)?.value;
-  const session = await getSessionFromToken(sessionToken);
 
-  if (!session) {
+  if (!sessionToken) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
