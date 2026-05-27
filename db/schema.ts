@@ -33,3 +33,62 @@ export const phones = pgTable("phones", {
     .notNull()
     .defaultNow(),
 });
+
+// Auth.js tables
+export const user = pgTable("user", {
+  id: varchar("id", { length: 255 }).notNull().primaryKey(),
+  name: varchar("name", { length: 255 }),
+  email: varchar("email", { length: 255 }).notNull(),
+  emailVerified: timestamp("emailVerified", {
+    mode: "date",
+    withTimezone: true,
+  }),
+  image: text("image"),
+});
+
+export const account = pgTable("account", {
+  id: varchar("id", { length: 255 }).notNull().primaryKey(),
+  userId: varchar("userId", { length: 255 })
+    .notNull()
+    .references(() => user.id),
+  type: varchar("type", { length: 50 }).notNull(),
+  provider: varchar("provider", { length: 50 }).notNull(),
+  providerAccountId: varchar("providerAccountId", { length: 255 }).notNull(),
+  refresh_token: text("refresh_token"),
+  access_token: text("access_token"),
+  expires_at: integer("expires_at"),
+  token_type: varchar("token_type", { length: 20 }),
+  scope: varchar("scope", { length: 255 }),
+  session_state: varchar("session_state", { length: 255 }),
+  oauth_token: varchar("oauth_token", { length: 255 }),
+  oauth_secret: varchar("oauth_secret", { length: 255 }),
+});
+
+export const session = pgTable("session", {
+  id: varchar("id", { length: 255 }).notNull().primaryKey(),
+  sessionToken: varchar("sessionToken", { length: 255 }).notNull().unique(),
+  userId: varchar("userId", { length: 255 })
+    .notNull()
+    .references(() => user.id),
+  expires: timestamp("expires", { mode: "date", withTimezone: true }).notNull(),
+});
+
+export const verificationToken = pgTable("verificationToken", {
+  identifier: varchar("identifier", { length: 255 }).notNull(),
+  token: varchar("token", { length: 255 }).notNull(),
+  expires: timestamp("expires", { mode: "date", withTimezone: true }).notNull(),
+});
+
+// Favorites (Wishlist)
+export const favorites = pgTable("favorites", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  userId: varchar("userId", { length: 255 })
+    .notNull()
+    .references(() => user.id),
+  phoneId: varchar("phoneId", { length: 100 })
+    .notNull()
+    .references(() => phones.id),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

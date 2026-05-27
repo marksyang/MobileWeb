@@ -1,6 +1,8 @@
-import { getPhoneById } from "@/db/queries";
+import { getPhoneById, isFavorite } from "@/db/queries";
+import { auth } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
+import FavoriteButton from "@/components/FavoriteButton";
 
 const platformColors: Record<string, string> = {
   YouTube: "bg-red-500/20 text-red-400",
@@ -12,6 +14,8 @@ const platformColors: Record<string, string> = {
 export default async function PhoneDetailPage({ params }: { params: Promise<{ phoneId: string }> }) {
   const { phoneId } = await params;
   const phone = await getPhoneById(phoneId);
+  const session = await auth();
+  const favorite = session?.user?.id ? await isFavorite(session.user.id, phoneId) : false;
 
   if (!phone) {
     return (
@@ -86,7 +90,12 @@ export default async function PhoneDetailPage({ params }: { params: Promise<{ ph
               {phone.name}
             </h1>
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 space-y-3">
+              {session && (
+                <FavoriteButton phoneId={phoneId} initialFavorite={favorite} />
+              )}
+
+              <div className="space-y-2">
               <div className="flex items-baseline gap-3">
                 <span className="text-3xl font-bold font-display text-accent-sky">
                   NT${phone.price.toLocaleString()}
@@ -102,6 +111,7 @@ export default async function PhoneDetailPage({ params }: { params: Promise<{ ph
                   官方建議售價 NT${phone.msrp.toLocaleString()}
                 </p>
               )}
+              </div>
             </div>
           </div>
 
