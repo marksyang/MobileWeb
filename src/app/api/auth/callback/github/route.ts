@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 
     const response = NextResponse.redirect(new URL(result.redirect, req.url));
 
-    // Set session cookie with the sessionToken
+    // Set session cookie with raw token (no JWT signing)
     const sessionExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     response.cookies.set(sessionCookieName, result.sessionToken, {
       ...cookieOpts,

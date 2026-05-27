@@ -201,3 +201,38 @@ export function getRequestMetadata(req: Request) {
   const redirectUri = `${baseUri}/api/auth/callback/github`;
   return { isHttps, baseUri, redirectUri };
 }
+
+/**
+ * Get session from a raw session token cookie value.
+ * This bypasses NextAuth cookie signing and reads directly from the database,
+ * ensuring compatibility between localhost and Vercel deployments.
+ */
+export async function getSessionFromToken(sessionToken: string | undefined): Promise<{
+  user: { id: string; name?: string; email: string; image?: string };
+} | null> {
+  if (!sessionToken) return null;
+
+  const [row] = await db
+    .select({
+      userId: session.userId,
+      expires: session.expires,
+      userName: user.name,
+      userEmail: user.email,
+      userImage: user.image,
+    })
+    .from(session)
+    .where(eq(session.sessionToken, sessionToken))
+    .innerJoin(user, eq(session.userId, user.id))
+    .limit(1);
+
+  if (!row || new Date(row.expires) < new Date()) return null;
+
+  return {
+    user: {
+      id: row.userId,
+      name: row.userName ?? undefined,
+      email: row.userEmail,
+      image: row.userImage ?? undefined,
+    },
+  };
+}
