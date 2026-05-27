@@ -1,8 +1,13 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getAllBrands } from "@/db/queries";
+import { auth } from "@/lib/auth";
+import UserMenu from "./UserMenu";
 
 export default async function Navbar() {
   const brands = await getAllBrands();
+  const session = await auth();
+
   return (
     <header className="sticky top-0 z-50 border-b border-border-subtle bg-bg-primary/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-4">
@@ -27,6 +32,21 @@ export default async function Navbar() {
             </Link>
           ))}
         </nav>
+
+        {session ? (
+          <UserMenu
+            name={session.user?.name ?? "User"}
+            email={session.user?.email ?? ""}
+            image={session.user?.image ?? ""}
+          />
+        ) : (
+          <Link
+            href="/login"
+            className="rounded-lg border border-border-subtle px-3 py-1.5 text-sm font-medium text-text-secondary transition-all hover:bg-bg-card-hover hover:text-text-primary"
+          >
+            登入
+          </Link>
+        )}
       </div>
     </header>
   );

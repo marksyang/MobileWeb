@@ -8,6 +8,13 @@
       "when": 1779759584637,
       "tag": "0000_next_peter_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779776292749,
+      "tag": "0001_chemical_corsair",
+      "breakpoints": true
     }
   ]
 }

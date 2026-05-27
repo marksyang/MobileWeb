@@ -1,6 +1,6 @@
-import { eq, sql, asc } from "drizzle-orm";
+import { eq, sql, asc, and } from "drizzle-orm";
 import { db } from "./index";
-import { brands, phones } from "./schema";
+import { brands, phones, favorites } from "./schema";
 import type { Phone, Brand } from "@/lib/types";
 
 export async function getAllBrands(): Promise<Brand[]> {
@@ -67,4 +67,37 @@ function mapPhoneRow(r: any): Phone {
 
 function mapPhoneRows(rows: any[]): Phone[] {
   return rows.map(mapPhoneRow);
+}
+
+export async function getFavorites(userId: string): Promise<Phone[]> {
+  const rows = await db
+    .select()
+    .from(favorites)
+    .where(eq(favorites.userId, userId))
+    .orderBy(asc(favorites.createdAt))
+    .innerJoin(phones, eq(favorites.phoneId, phones.id));
+  return rows.map((r) => mapPhoneRow(r.phones));
+}
+
+export async function isFavorite(userId: string, phoneId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(favorites)
+    .where(
+      and(
+        eq(favorites.userId, userId),
+        eq(favorites.phoneId, phoneId)
+      )
+    );
+  return (row?.count ?? 0) > 0;
+}
+
+export async function addFavorite(userId: string, phoneId: string) {
+  const id = `${userId}-${phoneId}`;
+  await db.insert(favorites).values({ id, userId, phoneId });
+}
+
+export async function removeFavorite(userId: string, phoneId: string) {
+  const id = `${userId}-${phoneId}`;
+  await db.delete(favorites).where(eq(favorites.id, id));
 }
