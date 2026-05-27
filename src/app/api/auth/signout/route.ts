@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   handleSignOut,
   sessionCookieName,
-  cookieOptions,
+  getCookieOptions,
+  getRequestMetadata,
 } from "@/lib/auth-config";
 
 export async function POST(req: NextRequest) {
+  const { isHttps } = getRequestMetadata(req);
+  const cookieOpts = getCookieOptions(isHttps);
+
   // Get session token from cookie
   const sessionToken = req.cookies.get(sessionCookieName)?.value;
 
@@ -27,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   // Clear session cookie
   response.cookies.set(sessionCookieName, "", {
-    ...cookieOptions,
+    ...cookieOpts,
     maxAge: 0,
   });
 

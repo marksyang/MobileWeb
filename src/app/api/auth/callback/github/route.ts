@@ -4,10 +4,14 @@ import {
   stateCookieName,
   pkceCookieName,
   sessionCookieName,
-  cookieOptions,
+  getCookieOptions,
+  getRequestMetadata,
 } from "@/lib/auth-config";
 
 export async function GET(req: NextRequest) {
+  const { isHttps, redirectUri } = getRequestMetadata(req);
+  const cookieOpts = getCookieOptions(isHttps);
+
   const { searchParams } = req.nextUrl;
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -38,7 +42,8 @@ export async function GET(req: NextRequest) {
     const result = await handleOAuthCallback(
       code,
       state,
-      codeVerifierCookie.value
+      codeVerifierCookie.value,
+      redirectUri,
     );
 
     const response = NextResponse.redirect(new URL(result.redirect, req.url));
@@ -46,13 +51,13 @@ export async function GET(req: NextRequest) {
     // Set session cookie with the sessionToken
     const sessionExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     response.cookies.set(sessionCookieName, result.sessionToken, {
-      ...cookieOptions,
+      ...cookieOpts,
       expires: sessionExpires,
     });
 
     // Clear state and PKCE cookies
-    response.cookies.set(stateCookieName, "", { ...cookieOptions, maxAge: 0 });
-    response.cookies.set(pkceCookieName, "", { ...cookieOptions, maxAge: 0 });
+    response.cookies.set(stateCookieName, "", { ...cookieOpts, maxAge: 0 });
+    response.cookies.set(pkceCookieName, "", { ...cookieOpts, maxAge: 0 });
 
     return response;
   } catch (error) {
