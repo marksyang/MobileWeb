@@ -6,7 +6,6 @@ import {
   sessionCookieName,
   getCookieOptions,
   getRequestMetadata,
-  signSessionToken,
 } from "@/lib/auth-config";
 
 export async function GET(req: NextRequest) {
@@ -49,10 +48,9 @@ export async function GET(req: NextRequest) {
 
     const response = NextResponse.redirect(new URL(result.redirect, req.url));
 
-    // Set session cookie with signed token (NextAuth format)
+    // Set session cookie with raw token (no JWT signing)
     const sessionExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    const signedToken = await signSessionToken(result.sessionToken);
-    response.cookies.set(sessionCookieName, signedToken, {
+    response.cookies.set(sessionCookieName, result.sessionToken, {
       ...cookieOpts,
       expires: sessionExpires,
     });

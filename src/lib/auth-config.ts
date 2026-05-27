@@ -1,5 +1,4 @@
 import { eq } from "drizzle-orm";
-import { SignJWT } from "jose";
 import { db } from "@/db";
 import { user, account, session } from "../../db/schema";
 
@@ -204,17 +203,36 @@ export function getRequestMetadata(req: Request) {
 }
 
 /**
- * Sign a session token in the format NextAuth (auth.js) expects for cookies.
- * NextAuth uses JWT signing (jose) with HS256/HS384/HS512 based on key length.
+ * Get session from a raw session token cookie value.
+ * This bypasses NextAuth cookie signing and reads directly from the database,
+ * ensuring compatibility between localhost and Vercel deployments.
  */
-export async function signSessionToken(token: string): Promise<string> {
-  const key = new TextEncoder().encode(AUTH_SECRET);
-  const algorithm = key.length <= 32 ? "HS256" : key.length <= 48 ? "HS384" : "HS512";
+export async function getSessionFromToken(sessionToken: string | undefined): Promise<{
+  user: { id: string; name?: string; email: string; image?: string };
+} | null> {
+  if (!sessionToken) return null;
 
-  const jwt = await new SignJWT({ state: token })
-    .setProtectedHeader({ alg: algorithm, typ: "at+jwt" })
-    .setIssuedAt()
-    .sign(key);
+  const [row] = await db
+    .select({
+      userId: session.userId,
+      expires: session.expires,
+      userName: user.name,
+      userEmail: user.email,
+      userImage: user.image,
+    })
+    .from(session)
+    .where(eq(session.sessionToken, sessionToken))
+    .innerJoin(user, eq(session.userId, user.id))
+    .limit(1);
 
-  return jwt;
+  if (!row || new Date(row.expires) < new Date()) return null;
+
+  return {
+    user: {
+      id: row.userId,
+      name: row.userName ?? undefined,
+      email: row.userEmail,
+      image: row.userImage ?? undefined,
+    },
+  };
 }
