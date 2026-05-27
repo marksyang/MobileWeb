@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { SignJWT } from "jose";
 import { db } from "@/db";
 import { user, account, session } from "../../db/schema";
 
@@ -200,4 +201,20 @@ export function getRequestMetadata(req: Request) {
   const baseUri = `${proto}://${host}`;
   const redirectUri = `${baseUri}/api/auth/callback/github`;
   return { isHttps, baseUri, redirectUri };
+}
+
+/**
+ * Sign a session token in the format NextAuth (auth.js) expects for cookies.
+ * NextAuth uses JWT signing (jose) with HS256/HS384/HS512 based on key length.
+ */
+export async function signSessionToken(token: string): Promise<string> {
+  const key = new TextEncoder().encode(AUTH_SECRET);
+  const algorithm = key.length <= 32 ? "HS256" : key.length <= 48 ? "HS384" : "HS512";
+
+  const jwt = await new SignJWT({ state: token })
+    .setProtectedHeader({ alg: algorithm, typ: "at+jwt" })
+    .setIssuedAt()
+    .sign(key);
+
+  return jwt;
 }
