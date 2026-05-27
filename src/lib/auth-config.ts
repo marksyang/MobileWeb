@@ -5,23 +5,29 @@ import { user, account, session } from "../../db/schema";
 const GITHUB_CLIENT_ID = process.env.AUTH_GITHUB_ID!;
 const GITHUB_CLIENT_SECRET = process.env.AUTH_GITHUB_SECRET!;
 const AUTH_SECRET = process.env.AUTH_SECRET!;
-const REDIRECT_URI = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/callback/github`;
 
-// Cookie config (matches Auth.js defaults for non-HTTPS dev)
-const useSecureCookies = false;
-const cookiePrefix = useSecureCookies ? "__Secure-" : "";
-const sessionCookieName = `${cookiePrefix}authjs.session-token`;
-const stateCookieName = `${cookiePrefix}authjs.state`;
-const pkceCookieName = `${cookiePrefix}authjs.pkce.code_verifier`;
+// Cookie config: detect HTTPS from request for Vercel deployment compatibility
+const cookiePrefix = "";
+export const sessionCookieName = `${cookiePrefix}authjs.session-token`;
+export const stateCookieName = `${cookiePrefix}authjs.state`;
+export const pkceCookieName = `${cookiePrefix}authjs.pkce.code_verifier`;
 
-const cookieOptions: Record<string, any> = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  path: "/",
-  secure: useSecureCookies,
-};
+export function getCookieOptions(isHttps: boolean): Record<string, any> {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    secure: isHttps,
+  };
+}
 
-export async function getGitHubAuthUrl(): Promise<{
+export function getRedirectUri(req: Request): string {
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+  const proto = req.headers.get("x-forwarded-proto") || "http";
+  return `${proto}://${host}`;
+}
+
+export async function getGitHubAuthUrl(redirectUri: string): Promise<{
   url: string;
   state: string;
   codeVerifier: string;
@@ -32,7 +38,7 @@ export async function getGitHubAuthUrl(): Promise<{
 
   const params = new URLSearchParams({
     client_id: GITHUB_CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     state,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
@@ -66,7 +72,8 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 export async function handleOAuthCallback(
   code: string,
   state: string,
-  codeVerifier: string
+  codeVerifier: string,
+  redirectUri: string
 ): Promise<{ user: any; sessionToken: string; redirect: string }> {
   // Exchange code for token
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
@@ -79,7 +86,7 @@ export async function handleOAuthCallback(
       client_id: GITHUB_CLIENT_ID,
       client_secret: GITHUB_CLIENT_SECRET,
       code,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: redirectUri,
       state,
       code_verifier: codeVerifier,
     }),
@@ -185,4 +192,12 @@ export async function handleSignOut(sessionToken: string): Promise<void> {
   await db.delete(session).where(eq(session.sessionToken, sessionToken));
 }
 
-export { sessionCookieName, stateCookieName, pkceCookieName, cookieOptions };
+// Helper to get environment-aware values from a request
+export function getRequestMetadata(req: Request) {
+  const proto = req.headers.get("x-forwarded-proto") || "http";
+  const isHttps = proto === "https";
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+  const baseUri = `${proto}://${host}`;
+  const redirectUri = `${baseUri}/api/auth/callback/github`;
+  return { isHttps, baseUri, redirectUri };
+}
