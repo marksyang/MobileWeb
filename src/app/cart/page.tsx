@@ -62,6 +62,12 @@ export default async function CartPage() {
                 </span>
               </div>
             </div>
+            <Link
+              href="/checkout"
+              className="block w-full rounded-xl bg-accent-sky py-3 text-center font-semibold text-white hover:bg-accent-sky/90 transition-colors active:scale-[0.98]"
+            >
+              結帳
+            </Link>
           </div>
         </div>
       ) : (

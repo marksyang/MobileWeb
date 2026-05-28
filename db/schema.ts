@@ -107,3 +107,34 @@ export const cartItems = pgTable("cartItems", {
     .notNull()
     .defaultNow(),
 });
+
+// Orders
+export const orders = pgTable("orders", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  userId: varchar("userId", { length: 255 })
+    .notNull()
+    .references(() => user.id),
+  totalAmount: integer("totalAmount").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  shippingName: varchar("shippingName", { length: 100 }).notNull(),
+  shippingPhone: varchar("shippingPhone", { length: 20 }).notNull(),
+  shippingAddress: text("shippingAddress").notNull(),
+  paymentMethod: varchar("paymentMethod", { length: 20 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const orderItems = pgTable("orderItems", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  orderId: varchar("orderId", { length: 255 })
+    .notNull()
+    .references(() => orders.id),
+  phoneId: varchar("phoneId", { length: 100 })
+    .notNull()
+    .references(() => phones.id),
+  phoneName: varchar("phoneName", { length: 200 }).notNull(),
+  phoneImage: text("phoneImage").notNull(),
+  price: integer("price").notNull(),
+  quantity: integer("quantity").notNull(),
+});

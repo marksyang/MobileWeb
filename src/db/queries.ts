@@ -1,6 +1,6 @@
 import { eq, sql, asc, and } from "drizzle-orm";
 import { db } from "./index";
-import { brands, phones, favorites, cartItems } from "./schema";
+import { brands, phones, favorites, cartItems, orders, orderItems } from "./schema";
 import type { Phone, Brand, CartItem } from "@/lib/types";
 
 export async function getAllBrands(): Promise<Brand[]> {
@@ -172,4 +172,113 @@ export async function removeFromCart(userId: string, phoneId: string) {
 
 export async function clearCart(userId: string) {
   await db.delete(cartItems).where(eq(cartItems.userId, userId));
+}
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  phoneId: string;
+  phoneName: string;
+  phoneImage: string;
+  price: number;
+  quantity: number;
+}
+
+export interface Order {
+  id: string;
+  userId: string;
+  totalAmount: number;
+  status: string;
+  shippingName: string;
+  shippingPhone: string;
+  shippingAddress: string;
+  paymentMethod: string;
+  createdAt: Date;
+  items: OrderItem[];
+}
+
+export async function createOrder(
+  userId: string,
+  cartItemsList: { phoneId: string; phoneName: string; phoneImage: string; price: number; quantity: number }[],
+  totalAmount: number,
+  shippingName: string,
+  shippingPhone: string,
+  shippingAddress: string,
+  paymentMethod: string
+): Promise<Order> {
+  const orderId = crypto.randomUUID();
+  await db.insert(orders).values({
+    id: orderId,
+    userId,
+    totalAmount,
+    status: "pending",
+    shippingName,
+    shippingPhone,
+    shippingAddress,
+    paymentMethod,
+  });
+
+  const orderItemsValues = cartItemsList.map((item, index) => ({
+    id: `${orderId}-${index}`,
+    orderId,
+    phoneId: item.phoneId,
+    phoneName: item.phoneName,
+    phoneImage: item.phoneImage,
+    price: item.price,
+    quantity: item.quantity,
+  }));
+
+  await db.insert(orderItems).values(orderItemsValues);
+  const items = await getOrderItems(orderId);
+
+  return {
+    id: orderId,
+    userId,
+    totalAmount,
+    status: "pending",
+    shippingName,
+    shippingPhone,
+    shippingAddress,
+    paymentMethod,
+    createdAt: new Date(),
+    items,
+  };
+}
+
+export async function getOrderItems(orderId: string): Promise<OrderItem[]> {
+  const rows = await db
+    .select()
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+  return rows.map((r) => ({
+    id: r.id,
+    orderId: r.orderId,
+    phoneId: r.phoneId,
+    phoneName: r.phoneName,
+    phoneImage: r.phoneImage,
+    price: r.price,
+    quantity: r.quantity,
+  }));
+}
+
+export async function getOrder(orderId: string): Promise<Order | undefined> {
+  const [row] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  if (!row) return undefined;
+  const items = await getOrderItems(orderId);
+  return {
+    id: row.id,
+    userId: row.userId,
+    totalAmount: row.totalAmount,
+    status: row.status,
+    shippingName: row.shippingName,
+    shippingPhone: row.shippingPhone,
+    shippingAddress: row.shippingAddress,
+    paymentMethod: row.paymentMethod,
+    createdAt: row.createdAt,
+    items,
+  };
 }
