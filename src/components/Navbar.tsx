@@ -1,12 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getAllBrands } from "@/db/queries";
+import { getAllBrands, getCartCount } from "@/db/queries";
 import { auth } from "@/lib/auth";
 import UserMenu from "./UserMenu";
 
 export default async function Navbar() {
   const brands = await getAllBrands();
   const session = await auth();
+  const cartCount = session?.user?.id ? await getCartCount(session.user.id) : 0;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border-subtle bg-bg-primary/80 backdrop-blur-xl">
@@ -32,6 +33,25 @@ export default async function Navbar() {
             </Link>
           ))}
         </nav>
+
+        {/* Cart icon with badge */}
+        <Link
+          href={session ? "/cart" : "/login"}
+          className="relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary transition-all hover:bg-bg-card-hover hover:text-text-primary"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"
+            />
+          </svg>
+          {cartCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-sky text-[10px] font-bold text-white">
+              {cartCount > 99 ? "99+" : cartCount}
+            </span>
+          )}
+        </Link>
 
         {session ? (
           <UserMenu

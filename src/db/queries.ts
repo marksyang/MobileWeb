@@ -1,7 +1,7 @@
 import { eq, sql, asc, and } from "drizzle-orm";
 import { db } from "./index";
-import { brands, phones, favorites } from "./schema";
-import type { Phone, Brand } from "@/lib/types";
+import { brands, phones, favorites, cartItems } from "./schema";
+import type { Phone, Brand, CartItem } from "@/lib/types";
 
 export async function getAllBrands(): Promise<Brand[]> {
   const rows = await db.select().from(brands);
@@ -100,4 +100,76 @@ export async function addFavorite(userId: string, phoneId: string) {
 export async function removeFavorite(userId: string, phoneId: string) {
   const id = `${userId}-${phoneId}`;
   await db.delete(favorites).where(eq(favorites.id, id));
+}
+
+export async function getCartItems(userId: string): Promise<CartItem[]> {
+  const rows = await db
+    .select()
+    .from(cartItems)
+    .where(eq(cartItems.userId, userId))
+    .orderBy(asc(cartItems.createdAt))
+    .innerJoin(phones, eq(cartItems.phoneId, phones.id));
+  return rows.map((r) => ({
+    phone: mapPhoneRow(r.phones),
+    quantity: r.cartItems.quantity,
+  }));
+}
+
+export async function getCartCount(userId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(cartItems)
+    .where(eq(cartItems.userId, userId));
+  return row?.count ?? 0;
+}
+
+export async function getCartItem(userId: string, phoneId: string): Promise<{ phone: Phone; quantity: number } | undefined> {
+  const [row] = await db
+    .select()
+    .from(cartItems)
+    .where(
+      and(
+        eq(cartItems.userId, userId),
+        eq(cartItems.phoneId, phoneId)
+      )
+    )
+    .innerJoin(phones, eq(cartItems.phoneId, phones.id))
+    .limit(1);
+  return row
+    ? { phone: mapPhoneRow(row.phones), quantity: row.cartItems.quantity }
+    : undefined;
+}
+
+export async function addToCart(userId: string, phoneId: string, quantity: number) {
+  const id = `${userId}-${phoneId}`;
+  const existing = await getCartItem(userId, phoneId);
+  if (existing) {
+    await db
+      .update(cartItems)
+      .set({ quantity })
+      .where(eq(cartItems.id, id));
+  } else {
+    await db.insert(cartItems).values({ id, userId, phoneId, quantity });
+  }
+}
+
+export async function updateCartQuantity(userId: string, phoneId: string, quantity: number) {
+  const id = `${userId}-${phoneId}`;
+  if (quantity <= 0) {
+    await removeFromCart(userId, phoneId);
+  } else {
+    await db
+      .update(cartItems)
+      .set({ quantity })
+      .where(eq(cartItems.id, id));
+  }
+}
+
+export async function removeFromCart(userId: string, phoneId: string) {
+  const id = `${userId}-${phoneId}`;
+  await db.delete(cartItems).where(eq(cartItems.id, id));
+}
+
+export async function clearCart(userId: string) {
+  await db.delete(cartItems).where(eq(cartItems.userId, userId));
 }

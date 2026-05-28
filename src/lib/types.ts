@@ -33,6 +33,11 @@ export interface Phone {
   reviewLinks: ReviewLink[];
 }
 
+export interface CartItem {
+  phone: Phone;
+  quantity: number;
+}
+
 export interface Brand {
   id: string;
   name: string;

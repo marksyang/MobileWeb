@@ -92,3 +92,18 @@ export const favorites = pgTable("favorites", {
     .notNull()
     .defaultNow(),
 });
+
+// Shopping Cart
+export const cartItems = pgTable("cartItems", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  userId: varchar("userId", { length: 255 })
+    .notNull()
+    .references(() => user.id),
+  phoneId: varchar("phoneId", { length: 100 })
+    .notNull()
+    .references(() => phones.id),
+  quantity: integer("quantity").notNull().default(1),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
