@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Image from "next/image";
 import CancelOrderButton from "./CancelOrderButton";
 import type { Order } from "@/lib/types";
@@ -78,9 +79,12 @@ export default function OrderCard({ order }: { order: Order }) {
           {order.status === "pending" && (
             <CancelOrderButton orderId={order.id} />
           )}
-          <button className="px-4 py-2 rounded-lg text-sm font-medium border border-border-subtle text-text-secondary hover:bg-bg-card-hover transition-all">
+          <Link
+            href={`/orders/${order.id}/tracking`}
+            className="px-4 py-2 rounded-lg text-sm font-medium border border-border-subtle text-text-secondary hover:bg-bg-card-hover transition-all"
+          >
             查看物流
-          </button>
+          </Link>
         </div>
       </div>
     </div>
