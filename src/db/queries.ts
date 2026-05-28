@@ -1,7 +1,7 @@
-import { eq, sql, asc, and } from "drizzle-orm";
+import { eq, sql, asc, and, desc, inArray } from "drizzle-orm";
 import { db } from "./index";
-import { brands, phones, favorites } from "./schema";
-import type { Phone, Brand } from "@/lib/types";
+import { brands, phones, favorites, cartItems, orders, orderItems, userProfile } from "./schema";
+import type { Phone, Brand, CartItem, Order, OrderItem, UserProfile } from "@/lib/types";
 
 export async function getAllBrands(): Promise<Brand[]> {
   const rows = await db.select().from(brands);
@@ -100,4 +100,242 @@ export async function addFavorite(userId: string, phoneId: string) {
 export async function removeFavorite(userId: string, phoneId: string) {
   const id = `${userId}-${phoneId}`;
   await db.delete(favorites).where(eq(favorites.id, id));
+}
+
+export async function getCartItems(userId: string): Promise<CartItem[]> {
+  const rows = await db
+    .select()
+    .from(cartItems)
+    .where(eq(cartItems.userId, userId))
+    .orderBy(asc(cartItems.createdAt))
+    .innerJoin(phones, eq(cartItems.phoneId, phones.id));
+  return rows.map((r) => ({
+    phone: mapPhoneRow(r.phones),
+    quantity: r.cartItems.quantity,
+  }));
+}
+
+export async function getCartCount(userId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(cartItems)
+    .where(eq(cartItems.userId, userId));
+  return row?.count ?? 0;
+}
+
+export async function getCartItem(userId: string, phoneId: string): Promise<{ phone: Phone; quantity: number } | undefined> {
+  const [row] = await db
+    .select()
+    .from(cartItems)
+    .where(
+      and(
+        eq(cartItems.userId, userId),
+        eq(cartItems.phoneId, phoneId)
+      )
+    )
+    .innerJoin(phones, eq(cartItems.phoneId, phones.id))
+    .limit(1);
+  return row
+    ? { phone: mapPhoneRow(row.phones), quantity: row.cartItems.quantity }
+    : undefined;
+}
+
+export async function addToCart(userId: string, phoneId: string, quantity: number) {
+  const id = `${userId}-${phoneId}`;
+  const existing = await getCartItem(userId, phoneId);
+  if (existing) {
+    await db
+      .update(cartItems)
+      .set({ quantity })
+      .where(eq(cartItems.id, id));
+  } else {
+    await db.insert(cartItems).values({ id, userId, phoneId, quantity });
+  }
+}
+
+export async function updateCartQuantity(userId: string, phoneId: string, quantity: number) {
+  const id = `${userId}-${phoneId}`;
+  if (quantity <= 0) {
+    await removeFromCart(userId, phoneId);
+  } else {
+    await db
+      .update(cartItems)
+      .set({ quantity })
+      .where(eq(cartItems.id, id));
+  }
+}
+
+export async function removeFromCart(userId: string, phoneId: string) {
+  const id = `${userId}-${phoneId}`;
+  await db.delete(cartItems).where(eq(cartItems.id, id));
+}
+
+export async function clearCart(userId: string) {
+  await db.delete(cartItems).where(eq(cartItems.userId, userId));
+}
+
+export async function createOrder(
+  userId: string,
+  cartItemsList: { phoneId: string; phoneName: string; phoneImage: string; price: number; quantity: number }[],
+  totalAmount: number,
+  shippingName: string,
+  shippingPhone: string,
+  shippingAddress: string,
+  paymentMethod: string
+): Promise<Order> {
+  const orderId = crypto.randomUUID();
+  await db.insert(orders).values({
+    id: orderId,
+    userId,
+    totalAmount,
+    status: "pending",
+    shippingName,
+    shippingPhone,
+    shippingAddress,
+    paymentMethod,
+  });
+
+  const orderItemsValues = cartItemsList.map((item, index) => ({
+    id: `${orderId}-${index}`,
+    orderId,
+    phoneId: item.phoneId,
+    phoneName: item.phoneName,
+    phoneImage: item.phoneImage,
+    price: item.price,
+    quantity: item.quantity,
+  }));
+
+  await db.insert(orderItems).values(orderItemsValues);
+  const items = await getOrderItems(orderId);
+
+  return {
+    id: orderId,
+    userId,
+    totalAmount,
+    status: "pending",
+    shippingName,
+    shippingPhone,
+    shippingAddress,
+    paymentMethod,
+    createdAt: new Date(),
+    items,
+  };
+}
+
+export async function getOrderItems(orderId: string): Promise<OrderItem[]> {
+  const rows = await db
+    .select()
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+  return rows.map((r) => ({
+    id: r.id,
+    orderId: r.orderId,
+    phoneId: r.phoneId,
+    phoneName: r.phoneName,
+    phoneImage: r.phoneImage,
+    price: r.price,
+    quantity: r.quantity,
+  }));
+}
+
+export async function getOrder(orderId: string): Promise<Order | undefined> {
+  const [row] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  if (!row) return undefined;
+  const items = await getOrderItems(orderId);
+  return {
+    id: row.id,
+    userId: row.userId,
+    totalAmount: row.totalAmount,
+    status: row.status as Order["status"],
+    shippingName: row.shippingName,
+    shippingPhone: row.shippingPhone,
+    shippingAddress: row.shippingAddress,
+    paymentMethod: row.paymentMethod,
+    createdAt: row.createdAt,
+    items,
+  };
+}
+
+export async function getOrders(userId: string): Promise<Order[]> {
+  const rows = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.userId, userId))
+    .orderBy(desc(orders.createdAt));
+  const orderIds = rows.map((r) => r.id);
+  if (orderIds.length === 0) return [];
+
+  const allItems = await db
+    .select()
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const itemsByOrderId = new Map<string, OrderItem[]>();
+  for (const item of allItems) {
+    const arr = itemsByOrderId.get(item.orderId) ?? [];
+    arr.push({
+      id: item.id,
+      orderId: item.orderId,
+      phoneId: item.phoneId,
+      phoneName: item.phoneName,
+      phoneImage: item.phoneImage,
+      price: item.price,
+      quantity: item.quantity,
+    });
+    itemsByOrderId.set(item.orderId, arr);
+  }
+
+  return rows.map((r) => ({
+    id: r.id,
+    userId: r.userId,
+    totalAmount: r.totalAmount,
+    status: r.status as Order["status"],
+    shippingName: r.shippingName,
+    shippingPhone: r.shippingPhone,
+    shippingAddress: r.shippingAddress,
+    paymentMethod: r.paymentMethod,
+    createdAt: r.createdAt,
+    items: itemsByOrderId.get(r.id) ?? [],
+  }));
+}
+
+export async function cancelOrder(orderId: string, userId: string): Promise<boolean> {
+  const order = await getOrder(orderId);
+  if (!order || order.userId !== userId) return false;
+  if (order.status !== "pending") return false;
+
+  await db
+    .update(orders)
+    .set({ status: "cancelled" })
+    .where(eq(orders.id, orderId));
+
+  return true;
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile | undefined> {
+  const [row] = await db
+    .select()
+    .from(userProfile)
+    .where(eq(userProfile.userId, userId))
+    .limit(1);
+  return row
+    ? { userId: row.userId, name: row.name, phone: row.phone, address: row.address }
+    : undefined;
+}
+
+export async function upsertUserProfile(userId: string, name: string, phone: string, address: string): Promise<UserProfile> {
+  await db
+    .insert(userProfile)
+    .values({ userId, name: name || null, phone: phone || null, address: address || null, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: userProfile.userId,
+      set: { name: name || null, phone: phone || null, address: address || null, updatedAt: new Date() },
+    });
+  const profile = await getUserProfile(userId);
+  if (!profile) throw new Error("Failed to create profile");
+  return profile;
 }

@@ -1,8 +1,9 @@
-import { getPhoneById, isFavorite } from "@/db/queries";
+import { getPhoneById, isFavorite, getCartItem } from "@/db/queries";
 import { auth } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
 import FavoriteButton from "@/components/FavoriteButton";
+import CartButton from "@/components/CartButton";
 
 const platformColors: Record<string, string> = {
   YouTube: "bg-red-500/20 text-red-400",
@@ -16,6 +17,7 @@ export default async function PhoneDetailPage({ params }: { params: Promise<{ ph
   const phone = await getPhoneById(phoneId);
   const session = await auth();
   const favorite = session?.user?.id ? await isFavorite(session.user.id, phoneId) : false;
+  const cartItem = session?.user?.id ? await getCartItem(session.user.id, phoneId) : undefined;
 
   if (!phone) {
     return (
@@ -114,6 +116,22 @@ export default async function PhoneDetailPage({ params }: { params: Promise<{ ph
               </div>
             </div>
           </div>
+
+          {/* Add to cart */}
+          {session && (
+            <div
+              className="animate-slide-up"
+              style={{ animationDelay: "150ms" }}
+            >
+              <CartButton
+                phoneId={phoneId}
+                phoneName={phone.name}
+                price={phone.price}
+                initialInCart={!!cartItem}
+                initialQuantity={cartItem?.quantity ?? 1}
+              />
+            </div>
+          )}
 
           {/* Specs */}
           <div
