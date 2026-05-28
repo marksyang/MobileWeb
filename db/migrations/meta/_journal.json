@@ -15,6 +15,13 @@
       "when": 1779776292749,
       "tag": "0001_chemical_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779984937720,
+      "tag": "0002_sloppy_power_man",
+      "breakpoints": true
     }
   ]
 }

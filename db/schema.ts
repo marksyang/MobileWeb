@@ -138,3 +138,17 @@ export const orderItems = pgTable("orderItems", {
   price: integer("price").notNull(),
   quantity: integer("quantity").notNull(),
 });
+
+// User contact profile
+export const userProfile = pgTable("userProfile", {
+  userId: varchar("userId", { length: 255 })
+    .primaryKey()
+    .notNull()
+    .references(() => user.id),
+  name: varchar("name", { length: 100 }),
+  phone: varchar("phone", { length: 20 }),
+  address: text("address"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

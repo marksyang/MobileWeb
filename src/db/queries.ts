@@ -1,7 +1,7 @@
-import { eq, sql, asc, and } from "drizzle-orm";
+import { eq, sql, asc, and, desc, inArray } from "drizzle-orm";
 import { db } from "./index";
-import { brands, phones, favorites, cartItems, orders, orderItems } from "./schema";
-import type { Phone, Brand, CartItem } from "@/lib/types";
+import { brands, phones, favorites, cartItems, orders, orderItems, userProfile } from "./schema";
+import type { Phone, Brand, CartItem, Order, OrderItem, UserProfile } from "@/lib/types";
 
 export async function getAllBrands(): Promise<Brand[]> {
   const rows = await db.select().from(brands);
@@ -174,29 +174,6 @@ export async function clearCart(userId: string) {
   await db.delete(cartItems).where(eq(cartItems.userId, userId));
 }
 
-export interface OrderItem {
-  id: string;
-  orderId: string;
-  phoneId: string;
-  phoneName: string;
-  phoneImage: string;
-  price: number;
-  quantity: number;
-}
-
-export interface Order {
-  id: string;
-  userId: string;
-  totalAmount: number;
-  status: string;
-  shippingName: string;
-  shippingPhone: string;
-  shippingAddress: string;
-  paymentMethod: string;
-  createdAt: Date;
-  items: OrderItem[];
-}
-
 export async function createOrder(
   userId: string,
   cartItemsList: { phoneId: string; phoneName: string; phoneImage: string; price: number; quantity: number }[],
@@ -273,7 +250,7 @@ export async function getOrder(orderId: string): Promise<Order | undefined> {
     id: row.id,
     userId: row.userId,
     totalAmount: row.totalAmount,
-    status: row.status,
+    status: row.status as Order["status"],
     shippingName: row.shippingName,
     shippingPhone: row.shippingPhone,
     shippingAddress: row.shippingAddress,
@@ -281,4 +258,84 @@ export async function getOrder(orderId: string): Promise<Order | undefined> {
     createdAt: row.createdAt,
     items,
   };
+}
+
+export async function getOrders(userId: string): Promise<Order[]> {
+  const rows = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.userId, userId))
+    .orderBy(desc(orders.createdAt));
+  const orderIds = rows.map((r) => r.id);
+  if (orderIds.length === 0) return [];
+
+  const allItems = await db
+    .select()
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const itemsByOrderId = new Map<string, OrderItem[]>();
+  for (const item of allItems) {
+    const arr = itemsByOrderId.get(item.orderId) ?? [];
+    arr.push({
+      id: item.id,
+      orderId: item.orderId,
+      phoneId: item.phoneId,
+      phoneName: item.phoneName,
+      phoneImage: item.phoneImage,
+      price: item.price,
+      quantity: item.quantity,
+    });
+    itemsByOrderId.set(item.orderId, arr);
+  }
+
+  return rows.map((r) => ({
+    id: r.id,
+    userId: r.userId,
+    totalAmount: r.totalAmount,
+    status: r.status as Order["status"],
+    shippingName: r.shippingName,
+    shippingPhone: r.shippingPhone,
+    shippingAddress: r.shippingAddress,
+    paymentMethod: r.paymentMethod,
+    createdAt: r.createdAt,
+    items: itemsByOrderId.get(r.id) ?? [],
+  }));
+}
+
+export async function cancelOrder(orderId: string, userId: string): Promise<boolean> {
+  const order = await getOrder(orderId);
+  if (!order || order.userId !== userId) return false;
+  if (order.status !== "pending") return false;
+
+  await db
+    .update(orders)
+    .set({ status: "cancelled" })
+    .where(eq(orders.id, orderId));
+
+  return true;
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile | undefined> {
+  const [row] = await db
+    .select()
+    .from(userProfile)
+    .where(eq(userProfile.userId, userId))
+    .limit(1);
+  return row
+    ? { userId: row.userId, name: row.name, phone: row.phone, address: row.address }
+    : undefined;
+}
+
+export async function upsertUserProfile(userId: string, name: string, phone: string, address: string): Promise<UserProfile> {
+  await db
+    .insert(userProfile)
+    .values({ userId, name: name || null, phone: phone || null, address: address || null, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: userProfile.userId,
+      set: { name: name || null, phone: phone || null, address: address || null, updatedAt: new Date() },
+    });
+  const profile = await getUserProfile(userId);
+  if (!profile) throw new Error("Failed to create profile");
+  return profile;
 }

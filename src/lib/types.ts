@@ -43,3 +43,33 @@ export interface Brand {
   name: string;
   logo: string;
 }
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  phoneId: string;
+  phoneName: string;
+  phoneImage: string;
+  price: number;
+  quantity: number;
+}
+
+export interface Order {
+  id: string;
+  userId: string;
+  totalAmount: number;
+  status: "pending" | "shipped" | "delivered" | "cancelled";
+  shippingName: string;
+  shippingPhone: string;
+  shippingAddress: string;
+  paymentMethod: string;
+  createdAt: Date;
+  items: OrderItem[];
+}
+
+export interface UserProfile {
+  userId: string;
+  name: string | null;
+  phone: string | null;
+  address: string | null;
+}
