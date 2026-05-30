@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 專案概述
 
-MobileWeb 是台灣手機比價平台，列出全台灣市面上所有手機的產品資料、規格與價格比較。使用者可透過 GitHub OAuth 登入並收藏喜歡的手機。
+MobileWeb 是台灣手機比價平台，列出全台灣市面上所有手機的產品資料、規格與價格比較。使用者可透過 GitHub OAuth 登入，收藏喜歡的手機、管理購物車、下單購買與追蹤訂單物流。
 
 ## 技術堆疊
 
 - **Framework:** Next.js 16 (App Router) + React 19 + TypeScript
-- **Styling:** Tailwind CSS 4
-- **Database:** Neon PostgreSQL (雲端-hosted)
+- **Styling:** Tailwind CSS 4（深色主題，自訂 color palette）
+- **Database:** Neon PostgreSQL（雲端-hosted）
 - **ORM:** Drizzle ORM
 - **Auth:** Auth.js v5 (next-auth@beta) + GitHub OAuth，自訂 PKCE 流程
-- **Deployment:** Vercel (production) + Neon (database)
+- **Deployment:** Vercel（production）+ Neon（database）
 
 ## 開發命令
 
@@ -42,51 +42,76 @@ npm run db:seed      # 使用 tsx seed.ts 植入初始資料
 ```
 src/
 ├── app/                          # Next.js App Router
+│   ├── layout.tsx                # RootLayout：Navbar + footer，zh-TW，Google Fonts
 │   ├── page.tsx                  # 首頁：本月 Top 20 熱門手機
 │   ├── brand/[brandId]/page.tsx  # 品牌頁：列出該品牌所有手機
-│   ├── phone/[phoneId]/page.tsx  # 手機詳情頁：規格、價格、收藏按鈕
-│   ├── profile/page.tsx          # 個人資料頁（需登入）
-│   ├── favorites/page.tsx        # 收藏列表頁（需登入）
+│   ├── phone/[phoneId]/page.tsx  # 手機詳情頁：規格、價格、收藏/購物車按鈕
 │   ├── login/page.tsx            # 登入頁
+│   ├── profile/page.tsx          # 個人資料頁（需登入）：編輯姓名/電話/地址
+│   ├── favorites/page.tsx        # 收藏列表頁（需登入）
+│   ├── account/page.tsx          # 帳戶管理頁（需登入）：檢視/編輯帳號資料
+│   ├── cart/page.tsx             # 購物車頁（需登入）：管理商品、數量、清除
+│   ├── checkout/page.tsx         # 結帳頁（需登入）：配送資訊 + 信用卡表單
+│   ├── checkout/success/page.tsx # 訂單成功頁
+│   ├── orders/page.tsx           # 訂單列表頁（需登入）
+│   ├── orders/[orderId]/tracking/page.tsx  # 物流追蹤頁（含 dummy 物流資料）
+│   ├── globals.css               # Tailwind CSS 4，深色主題，自訂 color/font
 │   └── api/                      # API Routes
 │       ├── auth/                 # Auth 路由（自訂 OAuth 流程）
-│       │   ├── [...nextauth]/route.ts
-│       │   ├── signin/github/route.ts       # 自訂 signin，產生 PKCE code challenge
-│       │   ├── callback/github/route.ts     # OAuth callback，交換 token 並建立 session
-│       │   └── signout/route.ts
-│       └── favorites/route.ts    # 收藏 CRUD API
+│       │   ├── [...nextauth]/route.ts  # 導出 NextAuth handlers（向後相容）
+│       │   ├── signin/github/route.ts  # 自訂 signin，產生 PKCE code challenge
+│       │   ├── callback/github/route.ts # OAuth callback，交換 token 並建立 session
+│       │   └── signout/route.ts        # 刪除 session 記錄
+│       ├── favorites/route.ts    # 收藏 CRUD API
+│       ├── cart/route.ts         # 購物車 CRUD API（新增/更新/刪除/清空）
+│       ├── checkout/route.ts     # 建立訂單，清空購物車
+│       ├── orders/route.ts       # 訂單列表查詢 + 取消訂單
+│       └── account/route.ts      # 帳戶資料 GET/PUT
 ├── components/
-│   ├── Navbar.tsx                # 導航列，包含品牌選單與使用者選單
-│   ├── PhoneCard.tsx             # 手機卡片（首頁/品牌頁共用）
-│   ├── FavoriteButton.tsx        # 收藏/取消收藏按鈕
+│   ├── Navbar.tsx                # 導航列：品牌選單 + 購物車徽章 + 使用者選單
+│   ├── PhoneCard.tsx             # 手機卡片（首頁/品牌頁共用，含 rank/discount badge）
+│   ├── FavoriteButton.tsx        # 收藏/取消收藏按鈕（Client Component）
+│   ├── CartButton.tsx            # 加入購物車按鈕（Client Component）
+│   ├── CartItemRow.tsx           # 購物車單行（Client Component）
+│   ├── CheckoutForm.tsx          # 結帳表單：信用卡 + 配送（Client Component）
+│   ├── ProfileForm.tsx           # 個人資料表單（Client Component）
+│   ├── OrderCard.tsx             # 訂單卡片（顯示訂單明細、狀態）
+│   ├── CancelOrderButton.tsx     # 取消訂單按鈕（Client Component）
 │   ├── GitHubSignIn.tsx          # GitHub 登入按鈕
-│   ├── SignOutButton.tsx         # 登出按鈕
-│   └── UserMenu.tsx              # 使用者選單（登入狀態、暈像）
+│   ├── SignOutButton.tsx         # 登出按鈕（Client Component）
+│   └── UserMenu.tsx              # 使用者下拉選單（Client Component）
 ├── db/
-│   ├── index.ts                  # Drizzle DB 連線（postgres-js）
-│   ├── schema.ts                 # 所有資料表 schema
+│   ├── index.ts                  # Drizzle DB 連線（postgres-js，snake_case）
+│   ├── schema.ts                 # 所有資料表 schema（re-export 到 db/schema.ts）
 │   └── queries.ts                # 資料庫查詢函數
 ├── lib/
-│   ├── auth.ts                   # NextAuth 設定（DrizzleAdapter、callbacks）
+│   ├── auth.ts                   # auth()：讀 cookie + DB session 查詢；同时導出 NextAuth config
 │   ├── auth-config.ts            # 自訂 OAuth 配置（PKCE、cookie 管理、session 建立）
-│   └── types.ts                  # TypeScript 類型定義
+│   └── types.ts                  # TypeScript 類型定義（Phone, Order, CartItem 等）
 └── data/
-    └── mock-data.ts              # 初始 seed 資料（品牌、手機規格）
+    └── mock-data.ts              # 初始 seed 資料（8 品牌、20 手機）
 ```
 
-### 資料庫 Schema
+### 資料庫 Schema（10 張表）
 
-核心資料表（位於 `db/schema.ts`）：
+所有 schema 位於 `src/db/schema.ts`，`db/schema.ts` 為 re-export 供 drizzle-kit 使用。
 
+**核心資料表：**
 - **brands** — 手機品牌（id, name, logo）
-- **phones** — 手機產品（id, name, brandId, image, images[], msrp, price, ranking, specs, reviewLinks）
+- **phones** — 手機產品（id, name, brandId, image, images[], msrp, price, ranking, specs, reviewLinks, created_at, updated_at）
+- **favorites** — 使用者收藏（id, userId, phoneId, createdAt）
+- **cartItems** — 購物車（id, userId, phoneId, quantity, createdAt）
+- **orders** — 訂單（id, userId, totalAmount, status, shippingName, shippingPhone, shippingAddress, paymentMethod, createdAt）
+- **orderItems** — 訂單明細（id, orderId, phoneId, phoneName, phoneImage, price, quantity）
+- **userProfile** — 使用者聯絡資料（userId, name, phone, address, updated_at）
+
+**Auth 資料表：**
 - **user** — Auth.js 使用者
 - **account** — Auth.js 第三方帳號關聯
 - **session** — Auth.js session 管理
 - **verificationToken** — Auth.js 驗證 token
-- **favorites** — 使用者收藏（userId + phoneId，composite PK）
 
-`specs` 和 `images` 等欄位使用 JSONB 儲存彈性資料。
+`specs`、`images`、`reviewLinks` 等欄位使用 JSONB 儲存彈性資料。
 
 ### 認證流程（重要）
 
@@ -94,18 +119,25 @@ src/
 
 1. 使用者點擊登入 → `/api/signin/github` 產生 PKCE codeChallenge 並重定向至 GitHub
 2. GitHub 回調 → `/api/auth/callback/github` 驗證 state、交換 token、建立/更新使用者和 session
-3. Session 儲存在 PostgreSQL `session` 表，cookie 名稱為 `authjs.session-token`
+3. Session 儲存在 PostgreSQL `session` 表，cookie 名稱為 `authjs.session-token`（定義於 `auth-config.ts` 的 `sessionCookieName`）
 4. 登出 → `/api/auth/signout` 刪除 session 記錄
+5. `src/lib/auth.ts` 的 `auth()` 函數讀取 cookie + 查詢 DB 回傳 session 資料
 
-**middleware.ts** 使用 `auth()` 保護 `/profile` 和 `/favorites` 路由。
+**middleware.ts** 使用 cookie 檢查保護以下路由：
+`/profile`、`/favorites`、`/cart`、`/checkout`、`/checkout/success`、`/account`、`/orders`、`/orders/:path*`
+
+### 購物車與訂單流程
+
+1. 使用者在手機詳情頁點擊「加入購物車」→ 呼叫 `/api/cart` 新增/更新購物車項目
+2. 在購物車頁管理商品數量或清空購物車
+3. 前往結帳頁，填寫配送資訊與信用卡資料（含驗證）
+4. 提交訂單 → `/api/checkout` 建立訂單記錄 + 訂單明細，並清空購物車
+5. 跳转至成功頁，可在訂單列表頁檢視所有訂單與取消未出貨訂單
+6. 物流追蹤頁顯示 dummy 物流資料
 
 ### 資料流程
 
-所有手機資料透過 `seed.ts` 植入 Neon 資料庫，來源參考手機王（sogi.com.tw）和傑昇通訊（jyes.com.tw）。`src/db/queries.ts` 提供所有查詢函數，各頁面直接使用（Server Component 模式）。
-
-### Seed 資料
-
-`seed.ts` 位於專案根目錄，包含所有品牌與手機的初始資料。修改 schema 後需執行 `npm run db:generate && npm run db:push`。
+所有手機資料透過 `seed.ts`（專案根目錄）植入 Neon 資料庫，來源參考手機王和傑昇通訊。`src/db/queries.ts` 提供所有查詢函數，各頁面直接使用（Server Component 模式）。
 
 ## 資料來源參考
 
